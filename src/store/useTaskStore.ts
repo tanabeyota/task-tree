@@ -12,7 +12,7 @@ import { resolveCollisions } from '../utils/layout';
 export const useTaskStore = create<TaskTreeState & { toggleCollapse: (id: string) => void; setRemoteState: (nodes: Node[], edges: Edge[]) => void }>()(
   temporal(
     (set, get) => ({
-      nodes: [], edges: [], selectedIds: [], arrowTargetId: null, savedArrowTargetId: null, activeEditor: null,
+        nodes: [], edges: [], selectedIds: [], arrowTargetId: null, savedArrowTargetId: null, activeEditor: null, lockedNodeIds: [],
 
       // ★ Firestoreからの更新（他ユーザーの操作）を反映。Undo履歴には積まない。
       setRemoteState: (nodes: Node[], edges: Edge[]) => {
@@ -23,6 +23,7 @@ export const useTaskStore = create<TaskTreeState & { toggleCollapse: (id: string
 
         setNodes: (nodes) => set({ nodes }),
         setEdges: (edges) => set({ edges }),
+        setLockedNodeIds: (lockedNodeIds) => set({ lockedNodeIds }),
         
         // ★親をドラッグしたら子も一緒に動くロジック
         onNodesChange: (changes: NodeChange[]) => {
@@ -83,7 +84,7 @@ export const useTaskStore = create<TaskTreeState & { toggleCollapse: (id: string
           newNodes[targetIdx] = { ...newNodes[targetIdx], data: { ...newNodes[targetIdx].data, isCollapsed: willCollapse } };
           toggleDescendants(id, willCollapse);
 
-          if (!willCollapse) newNodes = resolveCollisions(newNodes, [id]);
+          if (!willCollapse) newNodes = resolveCollisions(newNodes, [id, ...get().lockedNodeIds]);
           set({ nodes: newNodes });
         },
 

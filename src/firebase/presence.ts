@@ -29,3 +29,23 @@ export const subscribeToLocks = (nodeId: string, callback: (lockedBy: string | n
     callback(snapshot.val());
   });
 };
+
+export const subscribeToAllLocks = (callback: (lockedNodeIds: string[]) => void) => {
+  const allLocksRef = ref(rtdb, `presence/${BOARD_ID}/nodeLocks`);
+  return onValue(allLocksRef, (snapshot) => {
+    const val = snapshot.val();
+    if (!val) {
+      callback([]);
+      return;
+    }
+    const lockedIds = Object.keys(val);
+    callback(lockedIds);
+  });
+};
+
+export const subscribeToConnection = (callback: (isOnline: boolean) => void) => {
+  const connectedRef = ref(rtdb, '.info/connected');
+  return onValue(connectedRef, (snap) => {
+    callback(snap.val() === true);
+  });
+};

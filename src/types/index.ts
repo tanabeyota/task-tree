@@ -27,10 +27,12 @@ export interface TaskTreeState {
   arrowTargetId: string | null;
   savedArrowTargetId: string | null;
   activeEditor: Editor | null;
+  lockedNodeIds: string[];
   
   // Actions
   setNodes: (nodes: Node<TaskNodeData>[]) => void;
   setEdges: (edges: any[]) => void;
+  setLockedNodeIds: (ids: string[]) => void;
   onNodesChange: (changes: any[]) => void;
   onEdgesChange: (edges: any[]) => void;
   

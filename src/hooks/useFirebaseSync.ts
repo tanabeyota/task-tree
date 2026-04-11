@@ -2,12 +2,14 @@ import { useEffect } from 'react';
 import { db, auth } from '../firebase/config';
 import { collection, doc, onSnapshot, setDoc, arrayUnion } from 'firebase/firestore';
 import { useTaskStore } from '../store/useTaskStore';
+import { subscribeToAllLocks } from '../firebase/presence';
 import type { Node, Edge } from 'reactflow';
 
 export const BOARD_ID = 'default_board';
 
 export function useFirebaseSync() {
   const setRemoteState = useTaskStore((state) => state.setRemoteState);
+  const setLockedNodeIds = useTaskStore((state) => state.setLockedNodeIds);
 
   useEffect(() => {
     const boardRef = doc(db, 'boards', BOARD_ID);
@@ -75,6 +77,13 @@ export function useFirebaseSync() {
       setRemoteState(rfNodes, rfEdges);
     });
 
-    return () => unsubscribe();
-  }, [setRemoteState]);
+    const unsubscribeLocks = subscribeToAllLocks((lockedIds) => {
+      setLockedNodeIds(lockedIds);
+    });
+
+    return () => {
+       unsubscribe();
+       unsubscribeLocks();
+    };
+  }, [setRemoteState, setLockedNodeIds]);
 }

@@ -10,7 +10,7 @@ import CustomEdge from './CustomEdge';
 import type { Node } from 'reactflow';
 import ClipboardEngine from '../../engines/ClipboardEngine';
 import { useFirebaseSync } from '../../hooks/useFirebaseSync';
-import { updateCursor } from '../../firebase/presence';
+import { updateCursor, lockNode, unlockNode } from '../../firebase/presence';
 import { updateFirestoreNode } from '../../firebase/api';
 
 export default function TaskCanvas() {
@@ -42,11 +42,16 @@ export default function TaskCanvas() {
     }
   }, [addNode, screenToFlowPosition]);
 
+  const onNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
+    lockNode(node.id);
+  }, []);
+
   const onNodeDrag = useCallback((_: React.MouseEvent, node: Node) => {
     updateCursor(node.position.x, node.position.y);
   }, []);
 
   const onNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
+      unlockNode(node.id); // ドラッグ終了でロック解放
       // Save final coords to Firestore
       updateFirestoreNode(node.id, { x: node.position.x, y: node.position.y });
       
@@ -111,6 +116,7 @@ export default function TaskCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onSelectionChange={onSelectionChange}
+        onNodeDragStart={onNodeDragStart}
         onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
         panOnDrag={[1, 2]}
