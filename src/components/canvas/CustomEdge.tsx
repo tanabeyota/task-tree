@@ -1,41 +1,44 @@
-import { getSmoothStepPath } from 'reactflow';
-import type { EdgeProps } from 'reactflow';
+import React from 'react';
+import { getBezierPath } from 'reactflow';
+import type { EdgeProps } from 'reactflow'; // ★修正: type を明記して別々にインポート
 import { useTaskStore } from '../../store/useTaskStore';
 
-export default function CustomEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, target }: EdgeProps) {
-  const [edgePath] = getSmoothStepPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, borderRadius: 20 });
-  
-  const nodes = useTaskStore(state => state.nodes);
-  const targetNode = nodes.find(n => n.id === target);
-  const colorName = targetNode?.data.color || 'green';
-  
-  let stroke = '#cbd5e1';
+export default function CustomEdge({
+  id,
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  sourcePosition,
+  targetPosition,
+  style,
+  target // 接続先のノードID
+}: EdgeProps) {
+  // ★曲線（ベジェ曲線）の経路を計算
+  const [edgePath] = getBezierPath({
+    sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition,
+  });
+
+  // ★接続先のノードの色を取得して線の色を同期させる
+  const targetNode = useTaskStore(state => state.nodes.find(n => n.id === target));
+  const nodeColor = targetNode?.data?.color || 'green';
+
   const colorMap: Record<string, string> = {
-     green: '#4ade80',
-     blue: '#38bdf8',
-     red: '#f87171',
-     purple: '#c084fc',
-     yellow: '#facc15'
+    green: '#60d235',
+    blue: '#00c0ff',
+    red: '#fe007a',
+    purple: '#8b3dff'
   };
-  
-  // Theme check roughly
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  
-  if (colorName !== 'green' || !isDark) {
-    stroke = colorMap[colorName] || stroke;
-  } else {
-    // default dark theme subtle edge
-    stroke = '#475569';
-  }
 
   return (
     <path
       id={id}
       className="react-flow__edge-path"
       d={edgePath}
-      stroke={stroke}
+      stroke={colorMap[nodeColor] || '#cbd5e1'}
       strokeWidth={2.5}
       fill="none"
+      style={style}
     />
   );
 }

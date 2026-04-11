@@ -1,0 +1,10 @@
+{
+  "rules": {
+    "presence": {
+      "$boardId": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
+  }
+}
