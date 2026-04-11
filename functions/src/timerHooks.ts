@@ -18,7 +18,7 @@ export const sendDeadlineEmail = functions.https.onRequest(async (req, res) => {
 });
 
 export const scheduleDeadlineEmail = functions.https.onCall(async (request) => {
-  const { nodeId, deadline, email } = request.data;
+  const { nodeId, deadline } = request.data;
   const uid = request.auth?.uid;
 
   if (!uid) {
