@@ -1,4 +1,3 @@
-import React from 'react';
 import { getBezierPath } from 'reactflow';
 import type { EdgeProps } from 'reactflow'; // ★修正: type を明記して別々にインポート
 import { useTaskStore } from '../../store/useTaskStore';

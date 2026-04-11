@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useReactFlow } from 'reactflow';
 import { useTaskStore } from '../../store/useTaskStore';
+import type { TaskColor } from '../../types';
 
 export default function FloatingMenu() {
   const selectedIds = useTaskStore((state) => state.selectedIds);
@@ -31,7 +32,7 @@ export default function FloatingMenu() {
   const toggleList = () => activeEditor?.chain().focus().toggleBulletList().run();
 
   // 状態色の変更
-  const setColor = (c: string) => updateNodeData(targetId, { manualColor: c, color: c, deadline: '', waitHours: 0 });
+  const setColor = (c: TaskColor) => updateNodeData(targetId, { manualColor: c, color: c, deadline: '', waitHours: 0 });
 
   return (
     <div style={{

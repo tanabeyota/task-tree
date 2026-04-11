@@ -42,7 +42,7 @@ export default function TaskCanvas() {
     }
   }, [addNode, screenToFlowPosition]);
 
-  const onNodeDrag = useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeDrag = useCallback((_: React.MouseEvent, node: Node) => {
     updateCursor(node.position.x, node.position.y);
   }, []);
 
@@ -63,9 +63,9 @@ export default function TaskCanvas() {
         const targetEl = document.querySelector(`[data-id="${targetNodeId}"]`) as HTMLElement;
         if (targetEl) {
            const rect = targetEl.getBoundingClientRect();
-           const mouseOffsetY = event.clientY - rect.top;
+           const mouseOffsetY = (event as React.MouseEvent).clientY - rect.top;
            const isTopHalf = mouseOffsetY < rect.height / 2;
-           moveNode(node.id, targetNodeId, isTopHalf ? 'before' : (event.shiftKey ? 'after' : 'child'));
+           moveNode(node.id, targetNodeId, isTopHalf ? 'before' : ((event as React.MouseEvent).shiftKey ? 'after' : 'child'));
         }
       }
     }, [moveNode, getIntersectingNodes]);
