@@ -1,0 +1,5 @@
+﻿src/components/canvas/CustomEdge.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/canvas/TaskCanvas.tsx(45,35): error TS6133: 'event' is declared but its value is never read.
+src/components/ui/FloatingMenu.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/ui/FloatingMenu.tsx(34,62): error TS2322: Type 'string' is not assignable to type 'TaskColor | undefined'.
+src/components/ui/FloatingMenu.tsx(34,78): error TS2322: Type 'string' is not assignable to type 'TaskColor | undefined'.
