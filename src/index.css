@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+:root {
+  --bg-color: #f4f5f7;
+  --grid-major: #e2e4e8;
+  --grid-minor: #eceef1;
+  --text-main: #1a1a1a;
+  --text-sub: #64748b;
+  --text-placeholder: #cbd5e1;
+  --menu-bg: rgba(255, 255, 255, 0.95);
+  --menu-section-bg: #f8fafc;
+  --border-color: #e2e8f0;
+  --input-bg: #fff;
+  --input-border: #cbd5e1;
+  --btn-bg: #f8f9fa;
+  --btn-text: #adb5bd;
+  --btn-border: #dee2e6;
+  --line-default: #cbd5e1;
+  
+  --color-green: #60d235;
+  --color-blue: #00c0ff;
+  --color-red: #fe007a;
+  --color-purple: #8b3dff;
+  --color-yellow: #ffd600;
+}
+
+[data-theme="dark"] {
+  --bg-color: #0f172a;
+  --grid-major: #1e293b;
+  --grid-minor: #152033;
+  --text-main: #f8fafc;
+  --text-sub: #94a3b8;
+  --text-placeholder: #475569;
+  --menu-bg: rgba(30, 41, 59, 0.95);
+  --menu-section-bg: #0f172a;
+  --border-color: #334155;
+  --input-bg: #1e293b;
+  --input-border: #475569;
+  --btn-bg: #1e293b;
+  --btn-text: #64748b;
+  --btn-border: #334155;
+  --line-default: #475569;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: var(--bg-color);
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+.reactflow-wrapper {
+  width: 100vw;
+  height: 100vh;
+}
+
+/* React Flow customizations */
+.react-flow__background {
+  transition: background-color 0.3s ease;
+}
+
+.theme-toggle {
+  background: var(--menu-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  backdrop-filter: blur(8px);
+  color: var(--text-main);
+  transition: transform 0.2s, background 0.3s, border-color 0.3s;
+}
+
+.theme-toggle:hover {
+  transform: scale(1.1);
+}
