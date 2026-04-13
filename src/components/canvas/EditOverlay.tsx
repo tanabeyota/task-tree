@@ -16,13 +16,6 @@ interface Props {
   onStartEditing: (id: string) => void;
 }
 
-const STROKE_COLORS: Record<string, string> = {
-  green: '#4ade80',
-  blue: '#38bdf8',
-  red: '#f472b6',
-  purple: '#a78bfa',
-  yellow: '#fbbf24',
-};
 
 const TEXT_COLORS: Record<string, string> = {
   green: '#14532d',
