@@ -71,8 +71,8 @@ export const useTaskStore = create<TaskTreeState & {
           if (node.id !== id) return node;
           
           const nextData = { ...node.data, ...dataToUpdate };
-          if ('html' in dataToUpdate || 'ast' in dataToUpdate || 'manualMaxWidth' in dataToUpdate) {
-            const { w, h, renderCommands } = calcNodeSize(nextData.html, nextData.ast, nextData.manualMaxWidth ?? null);
+          if ('html' in dataToUpdate || 'ast' in dataToUpdate) {
+            const { w, h, renderCommands } = calcNodeSize(nextData.html, nextData.ast);
             nextData.w = w;
             nextData.h = h;
             nextData.renderCommands = renderCommands;
@@ -88,7 +88,7 @@ export const useTaskStore = create<TaskTreeState & {
           const updatedNode = newNodes.find(n => n.id === id);
           if (updatedNode) {
              const patchPayload: any = { data: { ...dataToUpdate } };
-             if ('html' in dataToUpdate || 'ast' in dataToUpdate || 'manualMaxWidth' in dataToUpdate) {
+             if ('html' in dataToUpdate || 'ast' in dataToUpdate) {
                patchPayload.data.w = updatedNode.data.w;
                patchPayload.data.h = updatedNode.data.h;
              }
@@ -232,7 +232,7 @@ export const useTaskStore = create<TaskTreeState & {
           data: {
             html, color: 'green', manualColor: 'green', parentId, childrenIds: [],
             isCollapsed: false, isHidden: false, deadline: '', duration: 0,
-            waitHours: 0, waitStartTime: null, manualMaxWidth: null,
+            waitHours: 0, waitStartTime: null,
             w: defaultWidth, h: defaultHeight
           },
         };
@@ -293,7 +293,7 @@ export const useTaskStore = create<TaskTreeState & {
             data: {
               html: content, color: 'green', manualColor: 'green', parentId, childrenIds: [],
               isCollapsed: false, isHidden: false, deadline: '', duration: 0,
-              waitHours: 0, waitStartTime: null, manualMaxWidth: null, w: 120, h: 44
+              waitHours: 0, waitStartTime: null, w: 120, h: 44
             }
           };
           newNodes.push(newNode);

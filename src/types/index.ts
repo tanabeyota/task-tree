@@ -32,7 +32,6 @@ export interface TaskNodeData {
   duration?: number;
   waitHours?: number;
   waitStartTime?: string | null;
-  manualMaxWidth?: number | null;
   w?: number | null;
   h?: number | null;
 }

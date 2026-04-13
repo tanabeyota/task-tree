@@ -15,17 +15,16 @@ const ZOOM_MAX = 4.0;
 const DRAG_THRESHOLD = 4; // px: この距離以下はクリックとみなす
 
 interface DragState {
-  type: 'pan' | 'node' | 'lasso' | 'resize';
+  type: 'pan' | 'node' | 'lasso';
   startScreenX: number;
   startScreenY: number;
   originCameraX: number;
   originCameraY: number;
-  // node drag / resize
+  // node drag
   nodeId?: string;
   node?: TaskNode;
   nodeStartWorldX?: number;
   nodeStartWorldY?: number;
-  nodeStartW?: number;
   descendantOffsets?: Map<string, { dx: number; dy: number; node: TaskNode }>;
   moved?: boolean;
   
@@ -121,8 +120,8 @@ export class CanvasInteraction {
     return this.renderer.screenToWorld(sx, sy);
   }
 
-  /** Hit-test: スクリーン座標でノードを探す (Z-index 降順 + リサイズ対応) */
-  private hitTest(screenX: number, screenY: number, ignoreIds?: Set<string>): { id: string, isResize: boolean } | null {
+  /** Hit-test: スクリーン座標でノードを探す (Z-index 降順) */
+  private hitTest(screenX: number, screenY: number, ignoreIds?: Set<string>): { id: string } | null {
     const { x: wx, y: wy } = this.screenToWorld(screenX, screenY);
     const candidates = this.renderer.spatialHash.query(wx, wy);
     const state = useTaskStore.getState();
@@ -141,9 +140,7 @@ export class CanvasInteraction {
       const nh = node.data.h ?? 44;
 
       if (wx >= nx && wx <= nx + nw && wy >= ny && wy <= ny + nh) {
-        // 右端16pxはリサイズ判定
-        const isResize = wx >= nx + nw - 16;
-        return { id: node.id, isResize };
+        return { id: node.id };
       }
     }
     return null;
@@ -205,34 +202,21 @@ export class CanvasInteraction {
       const node = state.nodes.find(n => n.id === hitId) as TaskNode | undefined;
       if (!node) return;
 
-      if (hit.isResize) {
-        this.drag = {
-          type: 'resize',
-          startScreenX: sx,
-          startScreenY: sy,
-          originCameraX: this.camera.x,
-          originCameraY: this.camera.y,
-          nodeId: hitId,
-          nodeStartW: node.data.w ?? 120,
-          moved: false,
-        };
-      } else {
-        // Node drag (選択状態はいじらない)
-        useTaskStore.getState().setArrowTarget(hitId);
-        this.drag = {
-          type: 'node',
-          startScreenX: sx,
-          startScreenY: sy,
-          originCameraX: this.camera.x,
-          originCameraY: this.camera.y,
-          nodeId: hitId,
-          node: node, // reference cache
-          nodeStartWorldX: node.position.x,
-          nodeStartWorldY: node.position.y,
-          descendantOffsets: this.getDescendantOffsets(hitId, state.nodes as unknown as TaskNode[]),
-          moved: false,
-        };
-      }
+      // Node drag (選択状態はいじらない)
+      useTaskStore.getState().setArrowTarget(hitId);
+      this.drag = {
+        type: 'node',
+        startScreenX: sx,
+        startScreenY: sy,
+        originCameraX: this.camera.x,
+        originCameraY: this.camera.y,
+        nodeId: hitId,
+        node: node, // reference cache
+        nodeStartWorldX: node.position.x,
+        nodeStartWorldY: node.position.y,
+        descendantOffsets: this.getDescendantOffsets(hitId, state.nodes as unknown as TaskNode[]),
+        moved: false,
+      };
     } else {
       // 2. 背景からの左ドラッグは範囲選択（ラッソ）
       const { x: wx, y: wy } = this.screenToWorld(sx, sy);
@@ -321,14 +305,6 @@ export class CanvasInteraction {
       }
 
       state.updateNodePositionsLocally(updates);
-    } else if (this.drag.type === 'resize' && this.drag.nodeId) {
-      const { x: curWX } = this.screenToWorld(sx, sy);
-      const { x: startWX } = this.screenToWorld(this.drag.startScreenX, this.drag.startScreenY);
-      const wdx = curWX - startWX;
-      
-      const newW = (this.drag.nodeStartW ?? 120) + wdx;
-      const state = useTaskStore.getState();
-      state.updateNodeData(this.drag.nodeId, { manualMaxWidth: newW });
     } else if (this.drag.type === 'lasso') {
       const { x: wx, y: wy } = this.screenToWorld(sx, sy);
       const ox = this.drag.originCameraX;
@@ -369,7 +345,7 @@ export class CanvasInteraction {
 
     if (!this.drag.moved) {
       // クリック判定 (ドラッグせずに離した場合)
-      if ((this.drag.type === 'node' || this.drag.type === 'resize') && this.drag.nodeId) {
+      if (this.drag.type === 'node' && this.drag.nodeId) {
         // 3. ノードクリック時は即座に選択＆編集モードに入る
         useTaskStore.getState().setSelection([this.drag.nodeId]);
         this.onNodeClick?.(

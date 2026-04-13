@@ -81,7 +81,6 @@ function splitIntoWrapChunks(text: string): string[] {
 export function calcNodeSize(
   _html: string = '',
   ast: any = null,
-  manualMaxWidth: number | null = null,
   colorStr: string = '#14532d' // Will be dynamically overridden by renderer anyway
 ): { w: number, h: number, renderCommands: RenderTextSpan[] } {
   const ctx = getMeasureCtx();
@@ -124,15 +123,7 @@ export function calcNodeSize(
   maxNaturalLineWidth = Math.max(maxNaturalLineWidth, currentLineWidth);
 
   // Determine Target Width
-  let targetMaxWidth = manualMaxWidth !== null 
-    ? manualMaxWidth 
-    : Math.max(minWidth, Math.min(maxNaturalLineWidth + PADDING_H * 2, autoWrapMaxWidth));
-
-  if (manualMaxWidth !== null) {
-    const maxAllowed = Math.max(minWidth, maxNaturalLineWidth + PADDING_H * 2);
-    targetMaxWidth = Math.min(targetMaxWidth, maxAllowed);
-    targetMaxWidth = Math.max(targetMaxWidth, minWidth); 
-  }
+  let targetMaxWidth = Math.max(minWidth, Math.min(maxNaturalLineWidth + PADDING_H * 2, autoWrapMaxWidth));
 
   const maxContentW = targetMaxWidth - PADDING_H * 2;
   const commands: RenderTextSpan[] = [];

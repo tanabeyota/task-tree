@@ -49,11 +49,10 @@ export function useFirebaseSync() {
           const data = docSnap.data();
           const id = docSnap.id;
 
-          const manualMaxWidth = data.manualMaxWidth || null;
           const html = data.html || '';
           const ast = data.ast || null;
           
-          const sizeRes = calcNodeSize(html, ast, manualMaxWidth);
+          const sizeRes = calcNodeSize(html, ast);
           
           rfNodes.push({
             id,
@@ -66,7 +65,7 @@ export function useFirebaseSync() {
               isCollapsed: data.isCollapsed || false, isHidden: data.isHidden || false,
               deadline: data.deadline || '', duration: data.duration || 0,
               waitHours: data.waitHours || 0, waitStartTime: data.waitStartTime || null,
-              manualMaxWidth, w: sizeRes.w, h: sizeRes.h,
+              w: sizeRes.w, h: sizeRes.h,
             }
           });
 
@@ -95,7 +94,6 @@ export function useFirebaseSync() {
         }
 
         const data = change.doc.data();
-        const manualMaxWidth = data.manualMaxWidth || null;
         const html = data.html || '';
         const ast = data.ast || null;
         
@@ -105,11 +103,11 @@ export function useFirebaseSync() {
         let h = data.h || 44;
         let renderCommands = oldNode?.data.renderCommands;
         
-        const textChanged = !oldNode || oldNode.data.html !== html || JSON.stringify(oldNode.data.ast) !== JSON.stringify(ast) || oldNode.data.manualMaxWidth !== manualMaxWidth;
+        const textChanged = !oldNode || oldNode.data.html !== html || JSON.stringify(oldNode.data.ast) !== JSON.stringify(ast);
         
         // Skip dense measurements if structural formatting hasn't mutated
         if (textChanged) {
-          const sizeRes = calcNodeSize(html, ast, manualMaxWidth);
+          const sizeRes = calcNodeSize(html, ast);
           w = sizeRes.w;
           h = sizeRes.h;
           renderCommands = sizeRes.renderCommands;
@@ -126,7 +124,7 @@ export function useFirebaseSync() {
             isCollapsed: data.isCollapsed || false, isHidden: data.isHidden || false,
             deadline: data.deadline || '', duration: data.duration || 0,
             waitHours: data.waitHours || 0, waitStartTime: data.waitStartTime || null,
-            manualMaxWidth, w, h,
+            w, h,
           }
         };
 
