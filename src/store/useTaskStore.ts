@@ -21,7 +21,6 @@ export const useTaskStore = create<TaskTreeState & {
   setRemoteState: (nodes: TaskNode[], edges: TaskEdge[]) => void;
   setAndSyncNodes: (newNodes: TaskNode[]) => void;
   pasteMarkdownTree: (text: string, startX: number, startY: number) => void;
-  updateNodePositions: (updates: { id: string; position: { x: number; y: number } }[]) => void;
   updateNodePositionsLocally: (updates: { id: string; position: { x: number; y: number }, node?: TaskNode }[]) => void;
   resolveNodeCollisions: (nodeId: string) => void;
 }>()(

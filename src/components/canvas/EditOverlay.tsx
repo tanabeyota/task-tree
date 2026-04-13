@@ -90,7 +90,7 @@ export function EditOverlay({ nodeId, screenRect, camera, onStopEditing, onStart
     editable: !isLockedByOther,
     autofocus: 'end',
     editorProps: {
-      handleKeyDown: (view, event) => {
+      handleKeyDown: (_view, event) => {
         if (!node || event.repeat) return false;
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const cmdOrCtrl = isMac ? event.metaKey : event.ctrlKey;
@@ -242,7 +242,6 @@ export function EditOverlay({ nodeId, screenRect, camera, onStopEditing, onStart
 
   const w = node?.data.w ?? 120;
   const h = node?.data.h ?? 44;
-  const _strokeColor = STROKE_COLORS[colorKey] ?? STROKE_COLORS.green;
   const scale = camera.zoom;
 
   return (
