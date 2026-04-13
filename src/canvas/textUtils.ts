@@ -79,7 +79,7 @@ function splitIntoWrapChunks(text: string): string[] {
 }
 
 export function calcNodeSize(
-  html: string = '',
+  _html: string = '',
   ast: any = null,
   manualMaxWidth: number | null = null,
   colorStr: string = '#14532d' // Will be dynamically overridden by renderer anyway

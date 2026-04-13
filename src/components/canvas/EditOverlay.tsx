@@ -5,7 +5,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
 import { useTaskStore } from '../../store/useTaskStore';
 import { lockNode, unlockNode, subscribeToLocks, subscribeToConnection } from '../../firebase/presence';
-import { updateFirestoreNode, patchFirestoreNode } from '../../firebase/api';
+import { patchFirestoreNode } from '../../firebase/api';
 import { auth } from '../../firebase/config';
 
 interface Props {
@@ -96,7 +96,6 @@ export function EditOverlay({ nodeId, screenRect, camera, onStopEditing, onStart
         const cmdOrCtrl = isMac ? event.metaKey : event.ctrlKey;
 
         const commitAndMove = (targetId: string) => {
-          const html = view.state.doc.getHTML ? editor?.getHTML() ?? '' : ''; // fallback safe extraction? It's better to just use editor.getHTML() if editor exists
           // editor might not be strictly ready in the cycle, but it is available.
           const e_html = editor ? editor.getHTML() : '';
           const e_ast = editor ? editor.getJSON() : {};
@@ -202,7 +201,7 @@ export function EditOverlay({ nodeId, screenRect, camera, onStopEditing, onStart
       updateNodeData(currentId, { html: newHtml, ast: newAst }, true); 
       debouncedSave(currentId, newHtml, newAst);
     },
-    onBlur: ({ editor }) => {
+    onBlur: () => {
       flushSave(); 
       unlockNode(lastNodeIdRef.current);
       setActiveEditor(null);
@@ -243,7 +242,7 @@ export function EditOverlay({ nodeId, screenRect, camera, onStopEditing, onStart
 
   const w = node?.data.w ?? 120;
   const h = node?.data.h ?? 44;
-  const strokeColor = STROKE_COLORS[colorKey] ?? STROKE_COLORS.green;
+  const _strokeColor = STROKE_COLORS[colorKey] ?? STROKE_COLORS.green;
   const scale = camera.zoom;
 
   return (

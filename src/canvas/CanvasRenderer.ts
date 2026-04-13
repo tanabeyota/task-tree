@@ -26,12 +26,7 @@ const COLORS = {
   yellow: { stroke: '#fbbf24', fill: 'rgba(251,191,36,0.08)', text: '#78350f' },
 } as const;
 
-const SPATIAL_CELL_SIZE = 500;
 const NODE_RADIUS = 42; // テキスト（余白16px表示域）が曲線をはみ出さない数学的限界半径に設定
-const NODE_PADDING_H = 16;
-const NODE_PADDING_V = 10;
-const FONT_SIZE = 15;
-const LINE_HEIGHT = FONT_SIZE * 1.4;
 const MIN_NODE_H = 44;
 const SHADOW_BLUR = 5;
 const SHADOW_OFFSET_Y = 2;
@@ -322,7 +317,6 @@ export class CanvasRenderer {
 
       const cpOffset = Math.max(Math.abs(x2 - x1) * 0.45, 40);
 
-      const srcColorKey = (src.data.color ?? 'green') as keyof typeof COLORS;
       const tgtColorKey = (tgt.data.color ?? 'green') as keyof typeof COLORS;
       const tgtStroke = COLORS[tgtColorKey]?.stroke ?? COLORS.green.stroke;
 
@@ -391,7 +385,7 @@ export class CanvasRenderer {
     ctx.shadowOffsetY = 0;
 
     let strokeWidth = 2.5;
-    let strokeColor = palette.stroke;
+    let strokeColor: string = palette.stroke;
 
     if (isSearchFocus) {
       strokeColor = 'rgba(255, 214, 0, 1)';
@@ -451,7 +445,7 @@ export class CanvasRenderer {
   private drawNodeText(
     ctx: CanvasRenderingContext2D,
     node: TaskNode,
-    x: number, y: number, w: number, h: number,
+    x: number, y: number, _w: number, h: number,
     textColor: string
   ) {
     if (this.editingNodeId === node.id) return;

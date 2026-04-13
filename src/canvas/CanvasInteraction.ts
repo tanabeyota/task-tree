@@ -8,7 +8,7 @@
 
 import { useTaskStore } from '../store/useTaskStore';
 import type { CanvasRenderer, Camera } from './CanvasRenderer';
-import type { TaskNode, TaskEdge, TaskNodeData } from '../types';
+import type { TaskNode } from '../types';
 
 const ZOOM_MIN = 0.05;
 const ZOOM_MAX = 4.0;
@@ -429,7 +429,7 @@ export class CanvasInteraction {
     }
   };
 
-  private onDblClick = (e: MouseEvent) => {
+  private onDblClick = () => {
     // ダブルクリックによる編集開始は不要になりました
   };
 

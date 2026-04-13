@@ -16,7 +16,7 @@ interface Props {
   onStartEditing: (id: string) => void;
 }
 
-export function ActiveNodeTools({ nodeId, screenRect, camera, onStartEditing }: Props) {
+export function ActiveNodeTools({ nodeId, screenRect, camera, onStartEditing: _onStartEditing }: Props) {
   const addNode = useTaskStore(s => s.addNode);
   const deleteNode = useTaskStore(s => s.deleteNode);
   const moveNode = useTaskStore(s => s.moveNode);

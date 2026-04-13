@@ -9,7 +9,7 @@
 import { create } from 'zustand';
 import { temporal } from 'zundo';
 import { v4 as uuidv4 } from 'uuid';
-import type { TaskNodeData, TaskTreeState, TaskColor, TaskNode, TaskEdge } from '../types';
+import type { TaskTreeState, TaskColor, TaskNode, TaskEdge } from '../types';
 import { resolveCollisions, getSubtreeBox, getDescendants } from '../utils/layout';
 import { batchDeleteFirestoreNodes, batchUpdateFirestoreNodes, batchPatchFirestoreNodes, patchFirestoreNode } from '../firebase/api';
 import { calcNodeSize } from '../canvas/textUtils';
@@ -22,6 +22,7 @@ export const useTaskStore = create<TaskTreeState & {
   setAndSyncNodes: (newNodes: TaskNode[]) => void;
   pasteMarkdownTree: (text: string, startX: number, startY: number) => void;
   updateNodePositions: (updates: { id: string; position: { x: number; y: number } }[]) => void;
+  updateNodePositionsLocally: (updates: { id: string; position: { x: number; y: number }, node?: TaskNode }[]) => void;
   resolveNodeCollisions: (nodeId: string) => void;
 }>()(
   temporal(
@@ -64,22 +65,39 @@ export const useTaskStore = create<TaskTreeState & {
         }
       },
 
-      updateNodeData: (id, data, skipFirestore = false) => {
+      updateNodeData: (id, dataToUpdate, skipFirestore = false) => {
         const state = get();
         let changed = false;
-        const newNodes = state.nodes.map(n => {
-          if (n.id === id) {
-            if (JSON.stringify(n.data) !== JSON.stringify({ ...n.data, ...data })) {
-              changed = true;
-            }
-            return { ...n, data: { ...n.data, ...data } };
+        const newNodes = state.nodes.map((node) => {
+          if (node.id !== id) return node;
+          
+          const nextData = { ...node.data, ...dataToUpdate };
+          if ('html' in dataToUpdate || 'ast' in dataToUpdate || 'manualMaxWidth' in dataToUpdate) {
+            const { w, h, renderCommands } = calcNodeSize(nextData.html, nextData.ast, nextData.manualMaxWidth ?? null);
+            nextData.w = w;
+            nextData.h = h;
+            nextData.renderCommands = renderCommands;
           }
-          return n;
+          if (JSON.stringify(node.data) !== JSON.stringify(nextData)) changed = true;
+          return { ...node, data: nextData };
         });
+        
+        // Optimistic UI: Update local state immediately. Do not use setAndSyncNodes.
         set({ nodes: newNodes });
+        
         if (changed && !skipFirestore) {
-          patchFirestoreNode(id, data).catch(console.error);
+          const updatedNode = newNodes.find(n => n.id === id);
+          if (updatedNode) {
+             const patchPayload: any = { data: { ...dataToUpdate } };
+             if ('html' in dataToUpdate || 'ast' in dataToUpdate || 'manualMaxWidth' in dataToUpdate) {
+               patchPayload.data.w = updatedNode.data.w;
+               patchPayload.data.h = updatedNode.data.h;
+             }
+             patchFirestoreNode(id, patchPayload).catch(console.error);
+          }
         }
+
+        if (dataToUpdate.manualColor || dataToUpdate.color) get().recalculateTreeColors();
       },
 
       updateNodePositionsLocally: (updates) => {
@@ -299,36 +317,6 @@ export const useTaskStore = create<TaskTreeState & {
         get().recalculateTreeColors();
       },
 
-      updateNodeData: (id, dataToUpdate) => {
-        const newNodes = get().nodes.map((node) => {
-          if (node.id !== id) return node;
-          
-          const nextData = { ...node.data, ...dataToUpdate };
-          if ('html' in dataToUpdate || 'ast' in dataToUpdate || 'manualMaxWidth' in dataToUpdate) {
-            const { w, h, renderCommands } = calcNodeSize(nextData.html, nextData.ast, nextData.manualMaxWidth ?? null);
-            nextData.w = w;
-            nextData.h = h;
-            nextData.renderCommands = renderCommands;
-          }
-          return { ...node, data: nextData };
-        });
-        
-        // Optimistic UI: Update local state immediately. Do not use setAndSyncNodes.
-        set({ nodes: newNodes });
-        
-        const updatedNode = newNodes.find(n => n.id === id);
-        if (updatedNode) {
-           const patchPayload: any = { data: { ...dataToUpdate } };
-           if ('html' in dataToUpdate || 'ast' in dataToUpdate || 'manualMaxWidth' in dataToUpdate) {
-             patchPayload.data.w = updatedNode.data.w;
-             patchPayload.data.h = updatedNode.data.h;
-             // DO NOT upload renderCommands to Firestore! It is bloated and computationally restored on the receiver via calcNodeSize anyway!!
-           }
-           patchFirestoreNode(id, patchPayload).catch(console.error);
-        }
-
-        if (dataToUpdate.manualColor || dataToUpdate.color) get().recalculateTreeColors();
-      },
 
       deleteNode: (id) => {
         const state = get();
@@ -580,7 +568,7 @@ export const useTaskStore = create<TaskTreeState & {
                   ...n.data,
                   waitHours: 0,
                   waitStartTime: null,
-                  manualColor: 'green'
+                  manualColor: 'green' as TaskColor
                 }
               };
             }

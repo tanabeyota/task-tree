@@ -12,7 +12,7 @@
  * React Flow / NodeToolbar / useReactFlow — 完全排除
  */
 
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useCanvasEngine } from '../../canvas/useCanvasEngine';
 import { useTaskStore } from '../../store/useTaskStore';
 import { useFirebaseSync } from '../../hooks/useFirebaseSync';
@@ -40,7 +40,6 @@ export default function TaskCanvas() {
     stopEditing,
     panToNode,
     getNodeScreenRect,
-    renderer,
     interaction,
   } = useCanvasEngine();
 
@@ -53,7 +52,6 @@ export default function TaskCanvas() {
   const isSaving = useTaskStore(s => s.isSaving);
   const isInitialized = useTaskStore(s => s.isInitialized);
   const addNode = useTaskStore(s => s.addNode);
-  const setSelection = useTaskStore(s => s.setSelection);
 
   // ─── 初期ノード生成 ──────────────────────────────
   useEffect(() => {

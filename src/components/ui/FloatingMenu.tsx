@@ -23,7 +23,7 @@ interface Props {
   camera: Camera;
 }
 
-export function FloatingToolbar({ targetIds, screenRect, camera }: Props) {
+export function FloatingToolbar({ targetIds, screenRect }: Props) {
   const nodes = useTaskStore(s => s.nodes);
   const updateNodeData = useTaskStore(s => s.updateNodeData);
   const activeEditor = useTaskStore(s => s.activeEditor);
@@ -98,7 +98,7 @@ export function FloatingToolbar({ targetIds, screenRect, camera }: Props) {
               data={data}
               tab={timerTab}
               onTabChange={setTimerTab}
-              onUpdate={(id, data) => {
+              onUpdate={(_id, data) => {
                 targetIds.forEach(targetId => updateNodeData(targetId, data));
               }}
             />
