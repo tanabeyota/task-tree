@@ -1,167 +1,287 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
-import ReactFlow, { Background, Controls, MiniMap, Panel, useReactFlow, SelectionMode } from 'reactflow';
-import 'reactflow/dist/style.css';
+/**
+ * TaskCanvas.tsx — メインキャンバスコンポーネント
+ *
+ * 構成:
+ *   <canvas>                   ← CanvasRenderer が全ノード/エッジ/グリッドを描画
+ *   HTML オーバーレイ（常時数個）
+ *     <ActiveNodeTools>        ← ホバー中ノードのアクションボタン
+ *     <EditOverlay>            ← ダブルクリックした1ノードの Tiptap 編集
+ *     <FloatingToolbar>        ← 選択中ノードのツールバー
+ *     <ContextMenu>            ← 右クリックメニュー
+ *
+ * React Flow / NodeToolbar / useReactFlow — 完全排除
+ */
+
+import React, { useEffect, useCallback, useState } from 'react';
+import { useCanvasEngine } from '../../canvas/useCanvasEngine';
 import { useTaskStore } from '../../store/useTaskStore';
-import TaskNode from './TaskNode';
-import TimerEngine from '../../engines/TimerEngine';
-import FloatingMenu from '../ui/FloatingMenu';
-import SearchBar from '../ui/SearchBar';
-import CustomEdge from './CustomEdge';
-import type { Node } from 'reactflow';
-import ClipboardEngine from '../../engines/ClipboardEngine';
 import { useFirebaseSync } from '../../hooks/useFirebaseSync';
-import { updateCursor, lockNode, unlockNode } from '../../firebase/presence';
-import { updateFirestoreNode } from '../../firebase/api';
+import { ActiveNodeTools } from './ActiveNodeTools';
+import { EditOverlay } from './EditOverlay';
+import { FloatingToolbar } from '../ui/FloatingMenu';
+import { ContextMenu } from './ContextMenu';
+import SearchBar from '../ui/SearchBar';
+import TimerEngine from '../../engines/TimerEngine';
+import ClipboardEngine from '../../engines/ClipboardEngine';
+import { CloudUpload, Cloud } from 'lucide-react';
+import { useTreeShortcuts } from '../../hooks/useTreeShortcuts';
 
 export default function TaskCanvas() {
   useFirebaseSync();
-  // ★ 修正: useMemo を使って型を記憶させ、Viteのリロード時にもReact Flowが警告を出さないようにする
-  const nodeTypes = useMemo(() => ({ taskNode: TaskNode }), []);
-  const edgeTypes = useMemo(() => ({ customEdge: CustomEdge }), []);
 
-  const nodes = useTaskStore((state) => state.nodes);
-  const edges = useTaskStore((state) => state.edges);
-  const onNodesChange = useTaskStore((state) => state.onNodesChange);
-  const onEdgesChange = useTaskStore((state) => state.onEdgesChange);
-  const setSelection = useTaskStore((state) => state.setSelection);
-  const addNode = useTaskStore((state) => state.addNode);
-  const arrowTargetId = useTaskStore((state) => state.arrowTargetId);
-  const moveNode = useTaskStore((state) => state.moveNode);
-  
-  const { setCenter, getNode, getIntersectingNodes, screenToFlowPosition } = useReactFlow();
-  const [isDark, setIsDark] = useState(false);
+  const {
+    canvasRef,
+    camera,
+    hoveredNodeId,
+    editingNodeId,
+    contextMenu,
+    setContextMenu,
+    startEditing,
+    stopEditing,
+    panToNode,
+    getNodeScreenRect,
+    renderer,
+    interaction,
+  } = useCanvasEngine();
 
-  const onSelectionChange = useCallback(({ nodes }: { nodes: any[] }) => {
-    setSelection(nodes.map(n => n.id));
-  }, [setSelection]);
+  // ─── Global Shortcuts ──────────────────────────────
+  useTreeShortcuts(startEditing);
 
-  const handleDoubleClick = useCallback((event: React.MouseEvent) => {
-    if (!(event.target as HTMLElement).closest('.task-node-wrapper')) {
-       const position = screenToFlowPosition({ x: event.clientX, y: event.clientY });
-       addNode(position.x, position.y, null, '');
+  const nodes = useTaskStore(s => s.nodes);
+  const selectedIds = useTaskStore(s => s.selectedIds);
+  const isDragging = useTaskStore(s => s.isDragging);
+  const isSaving = useTaskStore(s => s.isSaving);
+  const isInitialized = useTaskStore(s => s.isInitialized);
+  const addNode = useTaskStore(s => s.addNode);
+  const setSelection = useTaskStore(s => s.setSelection);
+
+  // ─── 初期ノード生成 ──────────────────────────────
+  useEffect(() => {
+    if (isInitialized && nodes.length === 0) {
+      if (useTaskStore.getState().nodes.length === 0) {
+        addNode(
+          window.innerWidth / 2 - 60,
+          window.innerHeight / 2 - 22,
+          null,
+          'Root Task'
+        );
+      }
     }
-  }, [addNode, screenToFlowPosition]);
+  }, [isInitialized, nodes.length, addNode]);
 
-  const onNodeDragStart = useCallback((_: React.MouseEvent, node: Node) => {
-    lockNode(node.id);
-  }, []);
-
-  const onNodeDrag = useCallback((_: React.MouseEvent, node: Node) => {
-    updateCursor(node.position.x, node.position.y);
-  }, []);
-
-  const onNodeDragStop = useCallback((event: React.MouseEvent, node: Node) => {
-      unlockNode(node.id); // ドラッグ終了でロック解放
-      // Save final coords to Firestore
-      updateFirestoreNode(node.id, { x: node.position.x, y: node.position.y });
-      
-      const intersections = getIntersectingNodes(node);
-      if (intersections.length > 0) {
-        const targetNodeId = intersections[0].id;
-        const state = useTaskStore.getState();
-        const getD = (id: string): string[] => {
-           let d = state.nodes.find(n => n.id === id)?.data.childrenIds || [];
-           return [...d, ...d.flatMap(getD)];
-        };
-        if (targetNodeId === node.id || getD(node.id).includes(targetNodeId)) return;
-
-        const targetEl = document.querySelector(`[data-id="${targetNodeId}"]`) as HTMLElement;
-        if (targetEl) {
-           const rect = targetEl.getBoundingClientRect();
-           const mouseOffsetY = (event as React.MouseEvent).clientY - rect.top;
-           const isTopHalf = mouseOffsetY < rect.height / 2;
-           moveNode(node.id, targetNodeId, isTopHalf ? 'before' : ((event as React.MouseEvent).shiftKey ? 'after' : 'child'));
-        }
-      }
-    }, [moveNode, getIntersectingNodes]);
-
+  // ─── Browser Native Scroll Lock ─────────────────────
+  // 巨大なノードをズーム状態で編集(Tiptap focus)した際にブラウザが勝手に画面(または親div)をスクロールして
+  // Canvas要素が上に押し出され、余白が白紙に見える現象を完全に防ぐ
   useEffect(() => {
-    if (nodes.length === 0) addNode(250, 250, null, 'Root Task');
-  }, [nodes.length, addNode]);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isInput = document.activeElement?.tagName === 'INPUT' || document.activeElement?.getAttribute('contenteditable') === 'true';
-      if (e.key === 'f' && !isInput) {
-        const arrowId = useTaskStore.getState().arrowTargetId;
-        if (arrowId) {
-          const arrowNode = getNode(arrowId);
-          if (arrowNode) setCenter(arrowNode.position.x + 100, arrowNode.position.y, { zoom: 1, duration: 500 });
-        }
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !isInput) {
-         if (e.shiftKey) useTaskStore.temporal.getState().redo();
-         else useTaskStore.temporal.getState().undo();
+    const lockWindowScroll = () => {
+      if (window.scrollY > 0 || window.scrollX > 0) {
+        window.scrollTo(0, 0);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [getNode, setCenter]);
+    window.addEventListener('scroll', lockWindowScroll, { passive: true });
+    return () => window.removeEventListener('scroll', lockWindowScroll);
+  }, []);
 
-  const arrowNode = arrowTargetId ? nodes.find(n => n.id === arrowTargetId) : null;
+  const handleContainerScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target.scrollTop > 0 || target.scrollLeft > 0) {
+      target.scrollTop = 0;
+      target.scrollLeft = 0;
+    }
+  }, []);
+
+
+  // ─── Context menu: ダブルクリック時の確認 ─────────
+  const handleContextMenuAction = useCallback((nodeId: string | null, x: number, y: number) => {
+    setContextMenu({ nodeId, x, y });
+  }, [setContextMenu]);
+
+  useEffect(() => {
+    const iref = interaction.current;
+    if (iref) {
+      iref.onContextMenu = handleContextMenuAction;
+    }
+  }, [interaction, handleContextMenuAction]);
+
+  // ─── アクティブノードの スクリーン座標 ──────────
+  const activeNodeId = hoveredNodeId ?? (selectedIds.length === 1 ? selectedIds[0] : null);
+  const activeRect = activeNodeId ? getNodeScreenRect(activeNodeId) : null;
+
+  const selectedRect = selectedIds.length > 0 ? (() => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let found = false;
+    for (const id of selectedIds) {
+      const rect = getNodeScreenRect(id);
+      if (rect) {
+        found = true;
+        minX = Math.min(minX, rect.x);
+        minY = Math.min(minY, rect.y);
+        maxX = Math.max(maxX, rect.x + rect.width);
+        maxY = Math.max(maxY, rect.y + rect.height);
+      }
+    }
+    return found ? new DOMRect(minX, minY, maxX - minX, maxY - minY) : null;
+  })() : null;
+
+  const editingRect = editingNodeId ? getNodeScreenRect(editingNodeId) : null;
+
+  const handleStopEditing = useCallback(() => {
+    stopEditing();
+  }, [stopEditing]);
 
   return (
-    <div className="reactflow-wrapper" onDoubleClick={handleDoubleClick} style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-      
-      <div id="help-text" style={{ position: 'absolute', top: 20, left: 20, zIndex: 1000, pointerEvents: 'none', color: isDark ? '#f8fafc' : '#1a1a1a' }}>
-        <strong>機能説明</strong> <span style={{color: 'gray'}}>(自動保存対応)</span><br/>
-        <kbd>Click</kbd> 選択 / <kbd>Double Click</kbd> 編集
+    <div
+      onScroll={handleContainerScroll}
+      style={{
+        width: '100vw',
+        height: '100vh',
+        overflow: 'clip',
+        position: 'relative',
+        background: '#f8fafc',
+        cursor: editingNodeId ? 'default' : 'grab',
+      }}
+      onContextMenu={e => e.preventDefault()}
+    >
+      {/* ───── Canvas レイヤー ───── */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+          cursor: editingNodeId ? 'default' : undefined,
+        }}
+      />
+
+      {/* ───── HTML オーバーレイ ───── */}
+
+      {/* ホバー / 選択ノードのアクションボタン（ノード数に依存しない 1 グループ） */}
+      {activeNodeId && activeRect && !editingNodeId && (
+        <div style={{
+          opacity: isDragging ? 0 : 1,
+          pointerEvents: isDragging ? 'none' : 'auto',
+          transition: 'opacity 0.15s ease',
+        }}>
+          <ActiveNodeTools
+            key={activeNodeId}
+            nodeId={activeNodeId}
+            screenRect={activeRect}
+            camera={camera}
+            onStartEditing={startEditing}
+          />
+        </div>
+      )}
+
+      {/* 編集オーバーレイ（Tiptap）: ダブルクリック時のみ 1 個 */}
+      {editingNodeId && editingRect && (
+        <EditOverlay
+          nodeId={editingNodeId}
+          screenRect={editingRect}
+          camera={camera}
+          onStopEditing={handleStopEditing}
+          onStartEditing={startEditing}
+        />
+      )}
+
+      {/* 選択ツールバー */}
+      {selectedIds.length > 0 && selectedRect && (
+        <div style={{
+          opacity: isDragging ? 0 : 1,
+          pointerEvents: isDragging ? 'none' : 'auto',
+          transition: 'opacity 0.15s ease',
+        }}>
+          <FloatingToolbar
+            targetIds={selectedIds}
+            screenRect={selectedRect}
+            camera={camera}
+          />
+        </div>
+      )}
+
+      {/* 右クリックメニュー */}
+      {contextMenu && (
+        <ContextMenu
+          nodeId={contextMenu.nodeId}
+          screenX={contextMenu.x}
+          screenY={contextMenu.y}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {/* Global Sync Indicator */}
+      <div style={{
+        position: 'absolute',
+        top: 24,
+        right: 24,
+        padding: '6px 12px',
+        background: 'white',
+        borderRadius: '9999px',
+        boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        fontSize: '12px',
+        fontWeight: 500,
+        color: isSaving ? '#64748b' : '#10b981',
+        pointerEvents: 'none',
+        transition: 'all 0.3s ease',
+        opacity: isSaving ? 1 : 0.7,
+      }}>
+        {isSaving ? (
+          <>
+            <CloudUpload size={16} className="animate-pulse" />
+            <span style={{ animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>Saving...</span>
+          </>
+        ) : (
+          <>
+            <Cloud size={16} />
+            <span>Saved</span>
+          </>
+        )}
       </div>
 
-      <ReactFlow
-        nodes={nodes.filter(n => !n.data.isHidden)}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onSelectionChange={onSelectionChange}
-        onNodeDragStart={onNodeDragStart}
-        onNodeDrag={onNodeDrag}
-        onNodeDragStop={onNodeDragStop}
-        panOnDrag={[1, 2]}
-        selectionOnDrag={true}
-        selectionMode={SelectionMode.Partial}
-        minZoom={0.2} maxZoom={3.0} zoomOnScroll={true} panOnScroll={false} fitView
-        deleteKeyCode={['Backspace', 'Delete']}
-      >
-        <Background gap={100} size={1} color={isDark ? '#334155' : '#cbd5e1'} />
-        <Controls />
-        <MiniMap nodeStrokeWidth={3} zoomable pannable />
-        
-        <Panel position="top-right">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              const nextTheme = !isDark;
-              setIsDark(nextTheme);
-              document.documentElement.setAttribute('data-theme', nextTheme ? 'dark' : 'light');
-            }} 
-            className="theme-toggle"
-            style={{ fontSize: '24px', cursor: 'pointer', background: 'none', border: 'none' }}
-          >
-            {isDark ? '☀️' : '🌙'}
-          </button>
-        </Panel>
+      {/* 検索バー */}
+      <SearchBar panToNode={panToNode} />
 
-        {arrowNode && !arrowNode.data.isHidden && (
-          <div id="current-task-arrow" style={{
-            position: 'absolute', zIndex: 10, pointerEvents: 'none', fontSize: '32px',
-            left: arrowNode.position.x + 20, top: arrowNode.position.y - 45,
-            color: arrowNode.data.color === 'green' ? '#60d235' : arrowNode.data.color === 'blue' ? '#00c0ff' : '#fe007a',
-            animation: 'bounceArrow 1.5s infinite ease-in-out'
-          }}>⬇</div>
-        )}
-      </ReactFlow>
-
+      {/* エンジン群 */}
       <TimerEngine />
-      <ClipboardEngine />   {/* ← これを追加！ */}
-      <FloatingMenu />
-      <SearchBar />
-      
-      <style>{`
-        @keyframes bounceArrow { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-      `}</style>
+      <ClipboardEngine />
+
+      {/* HUD: ズーム率表示 */}
+      <div style={{
+        position: 'absolute',
+        bottom: 16,
+        right: 16,
+        fontSize: 11,
+        color: '#94a3b8',
+        background: 'rgba(255,255,255,0.8)',
+        padding: '3px 8px',
+        borderRadius: 6,
+        backdropFilter: 'blur(4px)',
+        userSelect: 'none',
+        pointerEvents: 'none',
+        fontFamily: '"Inter", monospace',
+      }}>
+        {Math.round(camera.zoom * 100)}%
+      </div>
+
+      {/* HUD: ノード数 */}
+      <div style={{
+        position: 'absolute',
+        bottom: 16,
+        left: 16,
+        fontSize: 11,
+        color: '#94a3b8',
+        background: 'rgba(255,255,255,0.8)',
+        padding: '3px 8px',
+        borderRadius: 6,
+        backdropFilter: 'blur(4px)',
+        userSelect: 'none',
+        pointerEvents: 'none',
+        fontFamily: '"Inter", monospace',
+      }}>
+        {nodes.filter(n => !n.data.isHidden).length} nodes
+      </div>
     </div>
   );
 }
